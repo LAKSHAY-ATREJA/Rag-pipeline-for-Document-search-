@@ -152,7 +152,7 @@ def build_qa_chain(vectorstore, api_key: str) -> RetrievalQA:
         A configured RetrievalQA chain.
     """
     llm = ChatGroq(
-        model_name="llama3-8b-8192",
+        model_name="llama-3.1-8b-instant",
         temperature=0,
         groq_api_key=api_key,
         max_retries=2,
@@ -229,7 +229,7 @@ with st.sidebar:
     # Allow API key from environment variable as a default
     env_key = os.environ.get("GROQ_API_KEY", "")
     api_key = st.text_input(
-        "Groq API Key",
+        "Groq API Key (optional for retrieval demo)",
         value=env_key,
         type="password",
         placeholder="gsk_...",
@@ -240,7 +240,7 @@ with st.sidebar:
     st.header("Upload Document")
     uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"])
 
-    if uploaded_file and api_key:
+    if uploaded_file:
         if st.button("Process Document", use_container_width=True):
             with st.spinner("Processing document — this may take a moment..."):
                 try:
@@ -253,8 +253,22 @@ with st.sidebar:
                     st.error(str(e))
                 except Exception as e:
                     st.error(f"An unexpected error occurred: {e}")
-    elif uploaded_file and not api_key:
-        st.warning("Enter your Groq API key before processing.")
+
+    if st.button("Load built-in sample", use_container_width=True, help="Try the retrieval demo without uploading a PDF or adding an API key."):
+        try:
+            text_samples = [
+                "Retrieval augmented generation (RAG) combines semantic search over documents with language-model responses grounded in retrieved evidence.",
+                "FAISS is an efficient nearest-neighbour search library. It indexes numerical embedding vectors rather than extracting text from PDF documents.",
+                "In a document workflow, OCR converts scanned documents to text. After chunking, an embedding model transforms text into vectors for semantic search.",
+                "Good AI workflows use source attribution, quality checks and human review when the generated or retrieved information affects important decisions.",
+            ]
+            index = FAISS.from_texts(text_samples, embedding=get_embeddings(), metadatas=[{"page": 0, "source": "built-in-sample"}] * len(text_samples))
+            st.session_state.vectorstore = index
+            st.session_state.doc_metadata = {"pages": 1, "chunks": len(text_samples), "filename": "Built-in sample knowledge base"}
+            st.session_state.chat_history = []
+            st.success("Sample knowledge base loaded.")
+        except Exception as e:
+            st.error(f"Could not load sample: {e}")
 
     st.divider()
 
@@ -273,10 +287,8 @@ with st.sidebar:
 
 
 # ── Main area ─────────────────────────────────────────────────
-if not api_key:
-    st.info("Enter your Groq API key in the sidebar to get started.")
-elif not st.session_state.vectorstore:
-    st.info("Upload a PDF and click 'Process Document' to begin.")
+if not st.session_state.vectorstore:
+    st.info("Upload a PDF and click Process Document, or click Load built-in sample to try retrieval immediately. A Groq key is optional and only needed for LLM-generated answers.")
 else:
     # Render existing chat history
     for message in st.session_state.chat_history:
@@ -305,9 +317,15 @@ else:
         with st.chat_message("assistant"):
             with st.spinner("Searching document..."):
                 try:
-                    answer, sources = ask_question(
-                        st.session_state.vectorstore, question, api_key
-                    )
+                    if api_key:
+                        answer, sources = ask_question(
+                            st.session_state.vectorstore, question, api_key
+                        )
+                    else:
+                        sources = st.session_state.vectorstore.similarity_search(question, k=3)
+                        answer = "Retrieval-only mode: these are the closest matching document passages. Set a Groq key in the sidebar to generate a grounded answer.\n\n" + "\n\n".join(
+                            f"Source {i}: {doc.page_content[:700]}" for i, doc in enumerate(sources, 1)
+                        )
                 except (ValueError, RuntimeError) as e:
                     answer = f"Error: {e}"
                     sources = []
