@@ -4,6 +4,16 @@ A Retrieval-Augmented Generation (RAG) application that lets you upload any PDF 
 
 ---
 
+## Interactive Streamlit demo
+
+This repository includes a Streamlit app at [app.py](app.py). In [Streamlit Community Cloud](https://share.streamlit.io/), deploy from repository `LAKSHAY-ATREJA/Rag-pipeline-for-Document-search-`, branch `main`, and main file `app.py`. The root `requirements.txt` installs dependencies.
+
+The app supports **retrieval-only exploration without an API key**: click **Load built-in sample**, ask a question, and inspect the matching source passages. You can also upload a PDF. A Groq API key is optional and needed only for generated responses. For document safety, avoid confidential files on public hosting.
+
+A live URL is not claimed until a Streamlit Cloud deployment has been created and confirmed.
+
+---
+
 ## How the pipeline works
 
 ### 1. Document ingestion
@@ -49,7 +59,7 @@ The three retrieved chunks are assembled into a context block and inserted into 
 The application requires Python 3.9 or later. A virtual environment is recommended.
 
 ```bash
-git clone https://github.com/LAKSHAYATREJA/Rag-pipeline-for-Document-search-
+git clone https://github.com/LAKSHAY-ATREJA/Rag-pipeline-for-Document-search-
 cd Rag-pipeline-for-Document-search-
 
 python3 -m venv venv
